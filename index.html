@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Giro CTT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .ctt-red { background-color: #8B0000; }
+        .ctt-header { background-color: #A52A2A; color: white; }
+        input[type="text"], input[type="number"], input[type="time"], select {
+            width: 100%; padding: 4px 5px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 11px; text-align: center; background-color: #ffffff;
+            -webkit-appearance: none;
+        }
+        input:focus, select:focus { outline: none; ring: 2px; ring-color: #8B0000; border-color: #8B0000; }
+        table th, table td { border: 1px solid #d1d5db; padding: 4px 2px; font-size: 10px; white-space: nowrap; }
+
+        #tabela-arruamentos thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #A52A2A;
+            color: white;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        footer.print-footer {
+            text-align: center;
+            padding: 6px 0;
+            font-size: 10px;
+            font-weight: 600;
+            color: #4b5563;
+            border-top: 1px solid #d1d5db;
+            margin-top: 10px;
+        }
+
+        @media print {
+            header, button, .no-print { display: none !important; }
+            body { 
+                background-color: #ffffff !important; 
+                padding: 0 !important; 
+                margin: 0 !important; 
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            body.print-tab1 { font-size: 10px !important; }
+            body.print-tab1 @page { size: portrait; margin: 8mm; }
+            body.print-tab1 #view-tab1 { display: block !important; padding: 0 !important; margin: 0 !important; }
+            body.print-tab1 #view-tab2, body.print-tab1 #view-tab3 { display: none !important; }
+
+            body.print-tab2 { font-size: 9px !important; }
+            body.print-tab2 @page { size: landscape; margin: 4mm; }
+            body.print-tab2 #view-tab2 { display: block !important; padding: 0 !important; margin: 0 !important; }
+            body.print-tab2 #view-tab1, body.print-tab2 #view-tab3 { display: none !important; }
+
+            #cabecalho-acompanhamento {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr 1fr !important;
+                gap: 8px !important;
+                margin-bottom: 8px !important;
+                padding: 4px !important;
+            }
+
+            #cabecalho-registo {
+                display: grid !important;
+                grid-template-columns: repeat(5, 1fr) !important;
+                gap: 6px !important;
+                margin-bottom: 8px !important;
+                padding: 4px !important;
+            }
+
+            .bg-gray-50 { background-color: #f9fafb !important; }
+            .bg-white { background-color: #ffffff !important; }
+            .border { border: 1px solid #d1d5db !important; }
+            .rounded-lg, .rounded { border-radius: 3px !important; }
+
+            input { 
+                border: 1px solid #d1d5db !important; 
+                background-color: #ffffff !important; 
+                padding: 1px 3px !important; 
+                font-size: 9px !important; 
+                height: 18px !important;
+                border-radius: 2px !important;
+                box-sizing: border-box !important;
+            }
+
+            table th, table td { 
+                padding: 1px 2px !important; 
+                font-size: 9px !important; 
+                height: 20px !important;
+            }
+
+            input::placeholder { color: transparent !important; }
+            .col-acoes { display: none !important; }
+            
+            #tabela-arruamentos thead th { 
+                position: static !important; 
+                background-color: #A52A2A !important; 
+                color: white !important; 
+            }
+            .overflow-x-auto { overflow: visible !important; max-height: none !important; }
+
+            footer.print-footer {
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                background-color: #ffffff !important;
+                margin-top: 0 !important;
+                padding: 2px 0 !important;
+                font-size: 9px !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen pb-16 flex flex-col justify-between">
+    <div>
+        <header class="ctt-red text-white shadow-md py-3 px-4 mb-4">
+            <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
+                <div class="flex items-center gap-3 w-full md:w-auto justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-white px-3 py-1 rounded shadow-md flex items-center justify-center">
+                            <span class="text-red-700 font-extrabold text-xl tracking-tighter">CTT</span>
+                        </div>
+                        <h1 class="text-sm md:text-base font-bold tracking-wide">GESTÃO DE GIRO</h1>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1.5 flex-wrap justify-center no-print">
+                    <button onclick="mudarTab('tab1')" id="btn-tab1" class="px-2.5 py-1.5 rounded font-semibold text-xs bg-white text-red-900 shadow transition">1. Registo</button>
+                    <button onclick="mudarTab('tab2')" id="btn-tab2" class="px-2.5 py-1.5 rounded font-semibold text-xs bg-red-800 text-white hover:bg-red-700 transition">2. Acompanhamento</button>
+                    <button onclick="mudarTab('tab3')" id="btn-tab3" class="px-2.5 py-1.5 rounded font-semibold text-xs bg-red-800 text-white hover:bg-red-700 transition">3. Ruas</button>
+                    
+                    <button onclick="imprimirFolha(1)" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1.5 rounded text-xs font-semibold flex items-center gap-1 shadow">
+                        <i class="fa-solid fa-print"></i> PDF F1
+                    </button>
+                    <button onclick="imprimirFolha(2)" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1.5 rounded text-xs font-semibold flex items-center gap-1 shadow">
+                        <i class="fa-solid fa-print"></i> PDF F2
+                    </button>
+                    <button onclick="exportarExcelEstilizado()" class="bg-green-600 hover:bg-green-700 text-white px-2 py-1.5 rounded text-xs font-semibold flex items-center gap-1 shadow">
+                        <i class="fa-solid fa-file-excel"></i> Excel
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-2 md:px-4">
+            <!-- VISTA 1 -->
+            <div id="view-tab1" class="bg-white shadow-lg rounded-lg p-3 md:p-5 mb-6 border border-gray-200">
+                <div class="text-left font-bold text-red-900 text-base md:text-lg mb-3 border-b-2 border-red-900 pb-1">
+                    REGISTO DE TRÁFEGO, ACOMPANHAMENTO
+                </div>
+
+                <div id="cabecalho-registo" class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4 bg-gray-50 p-2 rounded border">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-700">CDP:</label>
+                        <input type="text" id="meta-cdp" placeholder="CDP" oninput="sincronizarBidirecional('cdp')">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-700">GIRO:</label>
+                        <input type="text" id="meta-giro" placeholder="Ex: MV375" oninput="sincronizarBidirecional('giro')">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-700">NOME CRT:</label>
+                        <input type="text" id="meta-crt" placeholder="Nome do CRT" oninput="sincronizarBidirecional('crt')">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-700">HORÁRIO:</label>
+                        <input type="text" id="meta-horario" placeholder="08:00 - 16:00" oninput="sincronizarBidirecional('horario')">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-700">DATA:</label>
+                        <input type="date" id="meta-data">
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="ctt-header text-center">
+                                <th class="w-2/4">DADOS</th>
+                                <th class="w-1/4">ESTUDO</th>
+                                <th class="w-1/4">PROJEÇÃO REAL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-tab1">
+                            <tr>
+                                <td class="font-semibold bg-gray-50">ÁREA INFLUENCIA</td>
+                                <td><input type="text" id="est-area" placeholder="Área Estudo"></td>
+                                <td><input type="text" id="proj-area" placeholder="Área Projeção Real"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">TOTAL SEQUENCIADO</td>
+                                <td><input type="number" id="est-tot-seq" readonly class="bg-gray-100 font-bold text-red-900"></td>
+                                <td><input type="number" id="proj-tot-seq" readonly class="bg-gray-100 font-bold text-red-900"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">SEQUENCIAMENTO</td>
+                                <td><input type="text" id="est-seq"></td>
+                                <td><input type="text" id="proj-seq"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">SAÍDA HORA</td>
+                                <td><input type="time" id="est-s-hora" onchange="calcularTudo()"></td>
+                                <td><input type="time" id="proj-s-hora" onchange="calcularTudo(); sincronizarBidirecional('s-hora');"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">REGRESSO HORA</td>
+                                <td><input type="time" id="est-r-hora" onchange="calcularTudo()"></td>
+                                <td><input type="time" id="proj-r-hora" onchange="calcularTudo(); sincronizarBidirecional('r-hora');"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">SAÍDA KM</td>
+                                <td><input type="number" id="est-s-km" onchange="calcularTudo()"></td>
+                                <td><input type="number" id="proj-s-km" onchange="calcularTudo(); sincronizarBidirecional('s-km');"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">REGRESSO KM</td>
+                                <td><input type="number" id="est-r-km" onchange="calcularTudo()"></td>
+                                <td><input type="number" id="proj-r-km" onchange="calcularTudo(); sincronizarBidirecional('r-km');"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">ALMOÇO HORA INÍCIO</td>
+                                <td><input type="time" id="est-alm-ini" onchange="calcularTudo()"></td>
+                                <td><input type="time" id="proj-alm-ini" onchange="calcularTudo()"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">ALMOÇO HORA FIM</td>
+                                <td><input type="time" id="est-alm-fim" onchange="calcularTudo()"></td>
+                                <td><input type="time" id="proj-alm-fim" onchange="calcularTudo()"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">ALMOÇO KM INICIO</td>
+                                <td><input type="number" id="est-alm-kmi"></td>
+                                <td><input type="number" id="proj-alm-kmi"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">ALMOÇO KM FIM</td>
+                                <td><input type="number" id="est-alm-kmf"></td>
+                                <td><input type="number" id="proj-alm-kmf"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">VOLUMOSOS</td>
+                                <td><input type="number" id="est-volumosos" onchange="calcularTudo()"></td>
+                                <td><input type="number" id="proj-volumosos" onchange="calcularTudo()"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-bold bg-gray-200">TOTAL</td>
+                                <td><input type="number" id="est-total" readonly class="bg-gray-100 font-bold"></td>
+                                <td><input type="number" id="proj-total" readonly class="bg-gray-100 font-bold"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">CNE</td>
+                                <td><input type="number" id="est-cne" onchange="calcularTudo()"></td>
+                                <td><input type="number" id="proj-cne" onchange="calcularTudo()"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">CORREIO NORMAL FINOS</td>
+                                <td><input type="number" id="est-cn-finos" onchange="calcularTudo()"></td>
+                                <td><input type="number" id="proj-cn-finos" onchange="calcularTudo()"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">CORREIO NORMAL MÉDIOS</td>
+                                <td><input type="number" id="est-cn-medios" onchange="calcularTudo()"></td>
+                                <td><input type="number" id="proj-cn-medios" onchange="calcularTudo()"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">CORREIO AZUL FINOS</td>
+                                <td><input type="number" id="est-azul-finos" onchange="calcularTudo()"></td>
+                                <td><input type="number" id="proj-azul-finos" onchange="calcularTudo()"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">CORREIO AZUL MÉDIOS</td>
+                                <td><input type="number" id="est-azul-medios" onchange="calcularTudo()"></td>
+                                <td><input type="number" id="proj-azul-medios" onchange="calcularTudo()"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">CORREIO REGISTADO TOTAL</td>
+                                <td><input type="number" id="est-reg-tot" onchange="calcularTudo()"></td>
+                                <td><input type="number" id="proj-reg-tot" onchange="calcularTudo()"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">CORREIO REG SIMPLES</td>
+                                <td><input type="number" id="est-reg-simp"></td>
+                                <td><input type="number" id="proj-reg-simp"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">COBRANÇAS / EP</td>
+                                <td><input type="number" id="est-cobr" onchange="calcularTudo()"></td>
+                                <td><input type="number" id="proj-cobr" onchange="calcularTudo()"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">EMS</td>
+                                <td><input type="number" id="est-ems" onchange="calcularTudo()"></td>
+                                <td><input type="number" id="proj-ems" onchange="calcularTudo()"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-bold bg-gray-200">OCUPAÇÃO EM MINUTOS</td>
+                                <td><input type="number" id="est-ocup" class="font-bold text-blue-900"></td>
+                                <td><input type="number" id="proj-ocup" readonly class="bg-gray-100 font-bold text-blue-900"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-bold bg-gray-200">KM</td>
+                                <td><input type="number" id="est-km" class="font-bold text-green-900"></td>
+                                <td><input type="number" id="proj-km" readonly class="bg-gray-100 font-bold text-green-900"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">STOPS PD (EMS > 0)</td>
+                                <td><input type="number" id="est-stops-pd"></td>
+                                <td><input type="number" id="proj-stops-pd" readonly class="bg-gray-100 font-bold text-red-900"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-50">STOPS PE (Linhas Ocupadas)</td>
+                                <td><input type="number" id="est-stops-pe"></td>
+                                <td><input type="number" id="proj-stops-pe" readonly class="bg-gray-100 font-bold text-red-900"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-4 overflow-x-auto">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="bg-gray-300 text-center text-gray-800">
+                                <th class="w-1/4">SALDOS</th>
+                                <th class="w-1/4">EMS</th>
+                                <th class="w-1/4">REGISTOS</th>
+                                <th class="w-1/4">AZUL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="font-semibold bg-gray-100">OBJ/STOP</td>
+                                <td><input type="number" id="s-ems-obj"></td>
+                                <td><input type="number" id="s-reg-stop"></td>
+                                <td><input type="number" id="s-azul-ocup"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-100">TAREFAS INTERNAS</td>
+                                <td><input type="number" id="t-ems-1"></td>
+                                <td><input type="number" id="t-reg-1"></td>
+                                <td><input type="number" id="t-azul-1"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-100">SEQUENCIAMENTO</td>
+                                <td><input type="number" id="t-ems-2"></td>
+                                <td><input type="number" id="t-reg-2"></td>
+                                <td><input type="number" id="t-azul-2"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-100">CARGA VIATURA</td>
+                                <td><input type="number" id="t-ems-3"></td>
+                                <td><input type="number" id="t-reg-3"></td>
+                                <td><input type="number" id="t-azul-3"></td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold bg-gray-100">DESCONTO / OUTROS</td>
+                                <td><input type="number" id="t-ems-4"></td>
+                                <td><input type="number" id="t-reg-4"></td>
+                                <td><input type="number" id="t-azul-4"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VISTA 2 -->
+            <div id="view-tab2" class="bg-white shadow-lg rounded-lg p-3 md:p-5 mb-6 border border-gray-200 hidden">
+                <div class="text-left font-bold text-red-900 text-base md:text-lg mb-2 border-b-2 border-red-900 pb-1">
+                    REGISTO DO ACOMPANHAMENTO
+                </div>
+
+                <div id="cabecalho-acompanhamento" class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-gray-50 p-2 rounded-lg border mb-3">
+                    <div class="space-y-1">
+                        <div class="flex gap-1 items-center"><span class="font-bold text-[10px] w-20">CDP:</span><input type="text" id="v-cdp" placeholder="CDP" oninput="sincronizarBidirecional('cdp-v2')"></div>
+                        <div class="flex gap-1 items-center"><span class="font-bold text-[10px] w-20">ITINERÁRIO:</span><input type="text" id="v-itin" placeholder="Itinerário (Giro)" oninput="sincronizarBidirecional('itin'); atualizarDatalist();"></div>
+                        <div class="flex gap-1 items-center"><span class="font-bold text-[10px] w-20">NOME CRT:</span><input type="text" id="v-crt" placeholder="Nome CRT" oninput="sincronizarBidirecional('crt-v2')"></div>
+                        <div class="flex gap-1 items-center"><span class="font-bold text-[10px] w-20">HORÁRIO:</span><input type="text" id="v-horario" placeholder="08:00 - 16:00" oninput="sincronizarBidirecional('horario-v2')"></div>
+                    </div>
+                    <div class="border p-2 rounded bg-white flex flex-col justify-between">
+                        <div class="text-center font-bold text-[10px] bg-red-900 text-white py-0.5 mb-1">MARCA / MODELO</div>
+                        <div class="space-y-1">
+                            <input type="text" id="v-marca" placeholder="MARCA / MODELO">
+                            <input type="text" id="v-numctt" placeholder="Nº CTT">
+                            <input type="text" id="v-matricula" placeholder="MATRÍCULA">
+                        </div>
+                    </div>
+                    <div class="border p-2 rounded bg-white flex flex-col justify-between">
+                        <div class="text-center font-bold text-[10px] bg-red-900 text-white py-0.5 mb-1">SAÍDA / CHEGADA CDP</div>
+                        <div class="grid grid-cols-2 gap-1">
+                            <input type="number" id="v-s-km" placeholder="Saída KM" oninput="sincronizarBidirecional('s-km-v2')">
+                            <input type="time" id="v-s-hora" onchange="sincronizarBidirecional('s-hora-v2')">
+                            <input type="number" id="v-c-km" placeholder="Cheg. KM" oninput="sincronizarBidirecional('r-km-v2')">
+                            <input type="time" id="v-c-hora" onchange="sincronizarBidirecional('r-hora-v2')">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse" id="tabela-arruamentos">
+                        <colgroup>
+                            <col style="width: 4%;">  <!-- CP4 -->
+                            <col style="width: 4%;">  <!-- CP3 -->
+                            <col style="width: 25%;"> <!-- ARRUAMENTO -->
+                            <col style="width: 5%;">  <!-- N.º PORTA -->
+                            <col style="width: 8%;">  <!-- ÁREA INFLUÊNCIA -->
+                            <col style="width: 4%;">  <!-- C NORMAL -->
+                            <col style="width: 4%;">  <!-- AZUL -->
+                            <col style="width: 5%;">  <!-- REGISTOS -->
+                            <col style="width: 4%;">  <!-- EMS -->
+                            <col style="width: 5%;">  <!-- RECOLHA -->
+                            <col style="width: 7%;">  <!-- Chegada KM -->
+                            <col style="width: 9%;">  <!-- Chegada HORA -->
+                            <col style="width: 9%;">  <!-- Partida HORA -->
+                            <col style="width: 7%;">  <!-- Desc. Min -->
+                        </colgroup>
+                        <thead>
+                            <tr class="ctt-header text-center text-[10px]">
+                                <th>CP4</th>
+                                <th>CP3</th>
+                                <th>ARRUAMENTO</th>
+                                <th>N.º PORTA</th>
+                                <th>ÁREA INFLUÊNCIA</th>
+                                <th>C NORMAL</th>
+                                <th>AZUL</th>
+                                <th>REGISTOS</th>
+                                <th>EMS</th>
+                                <th>RECOLHA</th>
+                                <th>Chegada KM</th>
+                                <th>Chegada HORA</th>
+                                <th>Partida HORA</th>
+                                <th>Desc. Min</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-arruamentos">
+                        </tbody>
+                        <tfoot>
+                            <tr class="bg-gray-200 font-bold text-center text-[10px]">
+                                <td colspan="5" class="text-right pr-2">TOTAIS:</td>
+                                <td><span id="tot-cnorm">0</span></td>
+                                <td><span id="tot-azul">0</span></td>
+                                <td><span id="tot-reg">0</span></td>
+                                <td><span id="tot-ems">0</span></td>
+                                <td><span id="tot-recolha">0</span></td>
+                                <td><span id="tot-km">0</span></td>
+                                <td colspan="2"></td>
+                                <td><span id="tot-desc">0</span></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <button onclick="adicionarLinhaArruamento()" class="mt-3 bg-red-900 hover:bg-red-800 text-white px-3 py-1.5 rounded text-xs font-semibold no-print">
+                    <i class="fa-solid fa-plus mr-1"></i>Adicionar Arruamento
+                </button>
+            </div>
+
+            <!-- VISTA 3 -->
+            <div id="view-tab3" class="bg-white shadow-lg rounded-lg p-3 md:p-5 mb-6 border border-gray-200 hidden">
+                <div class="text-left font-bold text-red-900 text-base md:text-lg mb-3 border-b-2 border-red-900 pb-1">
+                    BASE DE DADOS DE RUAS E CÓDIGOS POSTAIS
+                </div>
+
+                <div class="bg-blue-50 border border-blue-200 p-3 rounded-lg mb-4 no-print">
+                    <label class="block text-xs font-bold text-blue-900 mb-1">IMPORTAÇÃO RÁPIDA (COPIAR DO EXCEL):</label>
+                    <p class="text-[11px] text-gray-600 mb-2">Pode colar em qualquer destes formatos do Excel: <br>
+                    • <b>GIRO | CP4 | CP3 | ARRUAMENTO</b><br>
+                    • <b>CP4 | CP3 | ARRUAMENTO</b> (será associado ao Giro atual se preenchido)</p>
+                    <textarea id="import-excel-text" rows="3" class="w-full border p-2 text-xs rounded bg-white" placeholder="Cole aqui as linhas copiadas do Excel..."></textarea>
+                    <button onclick="importarDoExcel()" class="mt-2 bg-blue-700 hover:bg-blue-800 text-white px-3 py-1 rounded text-xs font-semibold">
+                        <i class="fa-solid fa-file-import mr-1"></i> Importar Dados Colados
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4 bg-gray-50 p-2 rounded border no-print">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700">GIRO:</label>
+                        <input type="text" id="db-giro" placeholder="Ex: MV120">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700">CP4 / CP3:</label>
+                        <div class="grid grid-cols-2 gap-1">
+                            <input type="text" id="db-cp4" placeholder="4430">
+                            <input type="text" id="db-cp3" placeholder="260">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700">NOME DO ARRUAMENTO:</label>
+                        <input type="text" id="db-rua" placeholder="Nome da Rua">
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="adicionarRuaBD()" class="w-full bg-red-900 hover:bg-red-800 text-white py-1.5 px-3 rounded text-xs font-semibold">
+                            <i class="fa-solid fa-plus mr-1"></i> Registar Rua
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="bg-gray-200 text-center text-xs">
+                                <th>GIRO</th>
+                                <th>CP4</th>
+                                <th>CP3</th>
+                                <th>ARRUAMENTO</th>
+                                <th class="col-acoes">AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-db-ruas">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modal-selecao-rua" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white p-5 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <h3 class="text-sm font-bold text-red-900 mb-2"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Múltiplas Ruas Encontradas para este CP3</h3>
+            <p class="text-xs text-gray-600 mb-3">Selecione a rua correta:</p>
+            <div id="modal-lista-opcoes" class="space-y-1.5 max-h-56 overflow-y-auto mb-3"></div>
+            <div class="text-right">
+                <button onclick="fecharModalRuas()" class="bg-gray-500 text-white px-3 py-1 rounded text-xs font-semibold">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="print-footer">
+        Concebido por João Quintã
+    </footer>
+
+    <datalist id="lista-ruas-bd"></datalist>
+
+    <script>
+        let baseDadosRuas = JSON.parse(localStorage.getItem('ctt_base_ruas_giro')) || [
+            { giro: "MV120", cp4: "4400", cp3: "123", rua: "Travessa Rio Febros" },
+            { giro: "MV375", cp4: "4430", cp3: "780", rua: "Rua Cândido dos Reis" },
+            { giro: "MV375", cp4: "4430", cp3: "944", rua: "Rua 25 de Abril" }
+        ];
+
+        let linhaAtualEmEdicao = null;
+
+        function salvarBDNoStorage() {
+            localStorage.setItem('ctt_base_ruas_giro', JSON.stringify(baseDadosRuas));
+        }
+
+        function mudarTab(tab) {
+            ['tab1', 'tab2', 'tab3'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                document.getElementById(`btn-${t}`).className = "px-2.5 py-1.5 rounded font-semibold text-xs bg-red-800 text-white hover:bg-red-700 transition";
+            });
+            document.getElementById(`view-tab${tab.replace('tab','')}`).classList.remove('hidden');
+            document.getElementById(`btn-${tab}`).className = "px-2.5 py-1.5 rounded font-semibold text-xs bg-white text-red-900 shadow transition";
+            if(tab === 'tab2') atualizarDatalist();
+        }
+
+        function imprimirFolha(num) {
+            document.body.classList.remove('print-tab1', 'print-tab2');
+            if(num === 1) {
+                document.body.classList.add('print-tab1');
+            } else if(num === 2) {
+                document.body.classList.add('print-tab2');
+            }
+            window.print();
+        }
+
+        function sincronizarBidirecional(origem) {
+            if (origem === 'cdp') {
+                document.getElementById('v-cdp').value = document.getElementById('meta-cdp').value;
+            } else if (origem === 'cdp-v2') {
+                document.getElementById('meta-cdp').value = document.getElementById('v-cdp').value;
+            } else if (origem === 'giro') {
+                document.getElementById('v-itin').value = document.getElementById('meta-giro').value;
+                atualizarDatalist();
+            } else if (origem === 'itin') {
+                document.getElementById('meta-giro').value = document.getElementById('v-itin').value;
+                atualizarDatalist();
+            } else if (origem === 'crt') {
+                document.getElementById('v-crt').value = document.getElementById('meta-crt').value;
+            } else if (origem === 'crt-v2') {
+                document.getElementById('meta-crt').value = document.getElementById('v-crt').value;
+            } else if (origem === 'horario') {
+                document.getElementById('v-horario').value = document.getElementById('meta-horario').value;
+            } else if (origem === 'horario-v2') {
+                document.getElementById('meta-horario').value = document.getElementById('v-horario').value;
+            } else if (origem === 's-km') {
+                document.getElementById('v-s-km').value = document.getElementById('proj-s-km').value;
+                calcularTotaisArruamentos();
+            } else if (origem === 's-km-v2') {
+                document.getElementById('proj-s-km').value = document.getElementById('v-s-km').value;
+                calcularTudo();
+            } else if (origem === 'r-km') {
+                document.getElementById('v-c-km').value = document.getElementById('proj-r-km').value;
+            } else if (origem === 'r-km-v2') {
+                document.getElementById('proj-r-km').value = document.getElementById('v-c-km').value;
+                calcularTudo();
+            } else if (origem === 's-hora') {
+                document.getElementById('v-s-hora').value = document.getElementById('proj-s-hora').value;
+            } else if (origem === 's-hora-v2') {
+                document.getElementById('proj-s-hora').value = document.getElementById('v-s-hora').value;
+                calcularTudo();
+            } else if (origem === 'r-hora') {
+                document.getElementById('v-c-hora').value = document.getElementById('proj-r-hora').value;
+            } else if (origem === 'r-hora-v2') {
+                document.getElementById('proj-r-hora').value = document.getElementById('v-c-hora').value;
+                calcularTudo();
+            }
+        }
+
+        function calcularTudo() {
+            let cnFinosEst = parseFloat(document.getElementById('est-cn-finos').value) || 0;
+            let cnMediosEst = parseFloat(document.getElementById('est-cn-medios').value) || 0;
+            let azulFinosEst = parseFloat(document.getElementById('est-azul-finos').value) || 0;
+            let azulMediosEst = parseFloat(document.getElementById('est-azul-medios').value) || 0;
+            let volumososEst = parseFloat(document.getElementById('est-volumosos').value) || 0;
+            let cneEst = parseFloat(document.getElementById('est-cne').value) || 0;
+            let regTotEst = parseFloat(document.getElementById('est-reg-tot').value) || 0;
+            let cobrEst = parseFloat(document.getElementById('est-cobr').value) || 0;
+            let emsEst = parseFloat(document.getElementById('est-ems').value) || 0;
+
+            document.getElementById('est-total').value = volumososEst;
+            document.getElementById('est-tot-seq').value = cnFinosEst + cnMediosEst + azulFinosEst + azulMediosEst + cneEst + regTotEst + cobrEst + emsEst;
+
+            let cnFinosProj = parseFloat(document.getElementById('proj-cn-finos').value) || 0;
+            let cnMediosProj = parseFloat(document.getElementById('proj-cn-medios').value) || 0;
+            let azulFinosProj = parseFloat(document.getElementById('proj-azul-finos').value) || 0;
+            let azulMediosProj = parseFloat(document.getElementById('proj-azul-medios').value) || 0;
+            let volumososProj = parseFloat(document.getElementById('proj-volumosos').value) || 0;
+            let cneProj = parseFloat(document.getElementById('proj-cne').value) || 0;
+            let regTotProj = parseFloat(document.getElementById('proj-reg-tot').value) || 0;
+            let cobrProj = parseFloat(document.getElementById('proj-cobr').value) || 0;
+            let emsProj = parseFloat(document.getElementById('proj-ems').value) || 0;
+
+            document.getElementById('proj-total').value = volumososProj;
+            document.getElementById('proj-tot-seq').value = cnFinosProj + cnMediosProj + azulFinosProj + azulMediosProj + cneProj + regTotProj + cobrProj + emsProj;
+
+            let sKmProj = parseFloat(document.getElementById('proj-s-km').value) || 0;
+            let rKmProj = parseFloat(document.getElementById('proj-r-km').value) || 0;
+            if (rKmProj >= sKmProj && (rKmProj > 0 || sKmProj > 0)) {
+                document.getElementById('proj-km').value = rKmProj - sKmProj;
+            } else {
+                document.getElementById('proj-km').value = 0;
+            }
+
+            document.getElementById('v-s-km').value = document.getElementById('proj-s-km').value;
+            document.getElementById('v-c-km').value = document.getElementById('proj-r-km').value;
+            document.getElementById('v-s-hora').value = document.getElementById('proj-s-hora').value;
+            document.getElementById('v-c-hora').value = document.getElementById('proj-r-hora').value;
+
+            calcularOcupacaoProj();
+            calcularTotaisArruamentos();
+        }
+
+        function calcularOcupacaoProj() {
+            let sHora = document.getElementById('proj-s-hora').value;
+            let rHora = document.getElementById('proj-r-hora').value;
+            let almIni = document.getElementById('proj-alm-ini').value;
+            let almFim = document.getElementById('proj-alm-fim').value;
+
+            if(sHora && rHora) {
+                let [sh, sm] = sHora.split(':').map(Number);
+                let [rh, rm] = rHora.split(':').map(Number);
+                let totalMin = (rh * 60 + rm) - (sh * 60 + sm);
+
+                if(almIni && almFim) {
+                    let [aih, aim] = almIni.split(':').map(Number);
+                    let [afh, afm] = almFim.split(':').map(Number);
+                    let almMin = (afh * 60 + afm) - (aih * 60 + aim);
+                    if(almMin > 0) totalMin -= almMin;
+                }
+                document.getElementById('proj-ocup').value = totalMin > 0 ? totalMin : 0;
+            }
+        }
+
+        function adicionarLinhaArruamento(cp4="", cp3="", rua="", porta="") {
+            const tbody = document.getElementById('tbody-arruamentos');
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="text" value="${cp4}" oninput="preencherPorCP3(this)"></td>
+                <td><input type="text" value="${cp3}" oninput="preencherPorCP3(this)"></td>
+                <td><input type="text" list="lista-ruas-bd" value="${rua}" oninput="preencherPorRua(this)"></td>
+                <td><input type="text" class="val-porta" value="${porta}" oninput="preencherPortaAutomatica(this)"></td>
+                <td><input type="text" class="val-area" value=""></td>
+                <td><input type="number" class="val-cnorm" oninput="calcularTotaisArruamentos()" value=""></td>
+                <td><input type="number" class="val-azul" oninput="calcularTotaisArruamentos()" value=""></td>
+                <td><input type="number" class="val-reg" oninput="calcularTotaisArruamentos()" value=""></td>
+                <td><input type="number" class="val-ems" oninput="calcularTotaisArruamentos()" value=""></td>
+                <td><input type="number" class="val-recolha" oninput="calcularTotaisArruamentos()" value=""></td>
+                <td><input type="number" class="val-km" oninput="calcularTotaisArruamentos()" value=""></td>
+                <td><input type="time"></td>
+                <td><input type="time"></td>
+                <td><input type="number" class="val-desc" oninput="calcularTotaisArruamentos()" value=""></td>
+            `;
+            tbody.appendChild(tr);
+            calcularTotaisArruamentos();
+        }
+
+        function preencherPortaAutomatica(inputPorta) {
+            const trAtual = inputPorta.closest('tr');
+            const inputsAtual = trAtual.querySelectorAll('input');
+            const cp4Val = inputsAtual[0].value.trim();
+            const cp3Val = inputsAtual[1].value.trim();
+            const ruaVal = inputsAtual[2].value.trim();
+
+            if (!cp4Val && !cp3Val && !ruaVal) {
+                const trAnterior = trAtual.previousElementSibling;
+                if (trAnterior) {
+                    const inputsAnterior = trAnterior.querySelectorAll('input');
+                    inputsAtual[0].value = inputsAnterior[0].value;
+                    inputsAtual[1].value = inputsAnterior[1].value;
+                    inputsAtual[2].value = inputsAnterior[2].value;
+                }
+            }
+        }
+
+        function preencherPorCP3(inputEl) {
+            const tr = inputEl.closest('tr');
+            const inputs = tr.querySelectorAll('input');
+            const cp3Val = inputs[1].value.trim().toLowerCase();
+
+            if (!cp3Val) return;
+
+            const giroAtual = (document.getElementById('v-itin').value || "").trim().toLowerCase();
+            const correspondencias = baseDadosRuas.filter(r => r.cp3.toLowerCase() === cp3Val && (!giroAtual || !r.giro || r.giro.toLowerCase() === giroAtual));
+
+            if (correspondencias.length === 1) {
+                inputs[0].value = correspondencias[0].cp4;
+                inputs[2].value = correspondencias[0].rua;
+            } else if (correspondencias.length > 1) {
+                linhaAtualEmEdicao = tr;
+                mostrarModalRuas(correspondencias);
+            }
+        }
+
+        function mostrarModalRuas(lista) {
+            const container = document.getElementById('modal-lista-opcoes');
+            container.innerHTML = '';
+            lista.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-2 hover:bg-red-50 border rounded text-xs font-semibold flex justify-between items-center";
+                btn.innerHTML = `<span><b>${item.rua}</b> (CP4: ${item.cp4})</span> <span class="text-red-800 text-[10px]">${item.giro || ''}</span>`;
+                btn.onclick = function() {
+                    const inputs = linhaAtualEmEdicao.querySelectorAll('input');
+                    inputs[0].value = item.cp4;
+                    inputs[1].value = item.cp3;
+                    inputs[2].value = item.rua;
+                    fecharModalRuas();
+                    calcularTotaisArruamentos();
+                };
+                container.appendChild(btn);
+            });
+            document.getElementById('modal-selecao-rua').classList.remove('hidden');
+        }
+
+        function fecharModalRuas() {
+            document.getElementById('modal-selecao-rua').classList.add('hidden');
+            linhaAtualEmEdicao = null;
+        }
+
+        function preencherPorRua(inputEl) {
+            const val = inputEl.value.trim().toLowerCase();
+            const encontrada = baseDadosRuas.find(r => r.rua.toLowerCase() === val);
+            if(encontrada) {
+                const tr = inputEl.closest('tr');
+                const inputs = tr.querySelectorAll('input');
+                inputs[0].value = encontrada.cp4;
+                inputs[1].value = encontrada.cp3;
+            }
+        }
+
+        function calcularTotaisArruamentos() {
+            let tCnorm = 0, tAzul = 0, tReg = 0, tEms = 0, tRecolha = 0, tDesc = 0;
+            let ultimaKm = 0;
+            let linhasOcupadas = 0;
+            let stopsPdCount = 0;
+            
+            document.querySelectorAll('#tbody-arruamentos tr').forEach(tr => {
+                const inputs = tr.querySelectorAll('input');
+                let cnorm = parseFloat(inputs[5].value) || 0;
+                let azul = parseFloat(inputs[6].value) || 0;
+                let reg = parseFloat(inputs[7].value) || 0;
+                let ems = parseFloat(inputs[8].value) || 0;
+                let recolha = parseFloat(inputs[9].value) || 0;
+                let desc = parseFloat(inputs[13].value) || 0;
+                let ruaVal = inputs[2].value.trim();
+                let portaVal = inputs[3].value.trim();
+
+                tCnorm += cnorm;
+                tAzul += azul;
+                tReg += reg;
+                tEms += ems;
+                tRecolha += recolha;
+                tDesc += desc;
+
+                if (ruaVal || portaVal || cnorm > 0 || azul > 0 || reg > 0 || ems > 0 || recolha > 0) {
+                    linhasOcupadas++;
+                }
+
+                if (ems > 0) {
+                    stopsPdCount++;
+                }
+
+                let kmVal = parseFloat(inputs[10].value) || 0;
+                if(kmVal > 0) {
+                    ultimaKm = kmVal;
+                }
+            });
+
+            let saidaKm = parseFloat(document.getElementById('v-s-km').value) || 0;
+            let diferencaKm = (ultimaKm >= saidaKm) ? (ultimaKm - saidaKm) : 0;
+
+            document.getElementById('tot-cnorm').innerText = tCnorm;
+            document.getElementById('tot-azul').innerText = tAzul;
+            document.getElementById('tot-reg').innerText = tReg;
+            document.getElementById('tot-ems').innerText = tEms;
+            document.getElementById('tot-recolha').innerText = tRecolha;
+            document.getElementById('tot-km').innerText = diferencaKm;
+            document.getElementById('tot-desc').innerText = tDesc;
+
+            document.getElementById('proj-stops-pe').value = linhasOcupadas;
+            document.getElementById('proj-stops-pd').value = stopsPdCount;
+        }
+
+        function atualizarDatalist() {
+            const giroAtual = (document.getElementById('v-itin').value || document.getElementById('meta-giro').value || "").trim().toLowerCase();
+            const dl = document.getElementById('lista-ruas-bd');
+            dl.innerHTML = '';
+            
+            const ruasFiltradas = baseDadosRuas.filter(r => !giroAtual || (r.giro && r.giro.toLowerCase() === giroAtual));
+
+            ruasFiltradas.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.rua;
+                dl.appendChild(opt);
+            });
+        }
+
+        function renderizarBD() {
+            const tbody = document.getElementById('tbody-db-ruas');
+            tbody.innerHTML = '';
+            baseDadosRuas.forEach((r, idx) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="text-center font-bold text-red-900">${r.giro || '-'}</td>
+                    <td class="text-center">${r.cp4}</td>
+                    <td class="text-center">${r.cp3}</td>
+                    <td>${r.rua}</td>
+                    <td class="text-center col-acoes"><button onclick="removerRuaBD(${idx})" class="text-red-700 hover:text-red-900 font-bold"><i class="fa-solid fa-trash"></i></button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+            atualizarDatalist();
+        }
+
+        function adicionarRuaBD() {
+            const giro = document.getElementById('db-giro').value.trim();
+            const cp4 = document.getElementById('db-cp4').value.trim();
+            const cp3 = document.getElementById('db-cp3').value.trim();
+            const rua = document.getElementById('db-rua').value.trim();
+
+            if(!rua) {
+                alert('Insira pelo menos o nome da Rua.');
+                return;
+            }
+
+            baseDadosRuas.push({ giro, cp4, cp3, rua });
+            salvarBDNoStorage();
+            document.getElementById('db-giro').value = '';
+            document.getElementById('db-cp4').value = '';
+            document.getElementById('db-cp3').value = '';
+            document.getElementById('db-rua').value = '';
+            renderizarBD();
+        }
+
+        function importarDoExcel() {
+            const texto = document.getElementById('import-excel-text').value;
+            if(!texto.trim()) {
+                alert('Cole os dados do Excel primeiro na caixa de texto.');
+                return;
+            }
+
+            const giroAtualForm = (document.getElementById('v-itin').value || document.getElementById('meta-giro').value || "").trim();
+            const linhas = texto.split('\n');
+            let importados = 0;
+
+            linhas.forEach(linha => {
+                if(!linha.trim()) return;
+                const cols = linha.split('\t');
+                let giro = "", cp4 = "", cp3 = "", rua = "";
+
+                if(cols.length >= 4) {
+                    giro = cols[0].trim();
+                    cp4 = cols[1].trim();
+                    cp3 = cols[2].trim();
+                    rua = cols[3].trim();
+                } else if(cols.length === 3) {
+                    giro = giroAtualForm;
+                    cp4 = cols[0].trim();
+                    cp3 = cols[1].trim();
+                    rua = cols[2].trim();
+                } else if(cols.length === 2) {
+                    giro = giroAtualForm;
+                    const cpPartes = cols[0].trim().split('-');
+                    cp4 = cpPartes[0] || "";
+                    cp3 = cpPartes[1] || "";
+                    rua = cols[1].trim();
+                }
+
+                if(rua) {
+                    baseDadosRuas.push({ giro, cp4, cp3, rua });
+                    importados++;
+                }
+            });
+
+            if (importados > 0) {
+                salvarBDNoStorage();
+                document.getElementById('import-excel-text').value = '';
+                renderizarBD();
+                alert(`Sucesso! Foram importadas ${importados} ruas para a base de dados.`);
+            } else {
+                alert('Não foi possível reconhecer o formato das linhas. Verifique se copiou as colunas do Excel.');
+            }
+        }
+
+        function removerRuaBD(idx) {
+            baseDadosRuas.splice(idx, 1);
+            salvarBDNoStorage();
+            renderizarBD();
+        }
+
+        window.onload = function() {
+            for(let i=0; i<20; i++) {
+                adicionarLinhaArruamento();
+            }
+            renderizarBD();
+        }
+
+        async function exportarExcelEstilizado() {
+            const workbook = new ExcelJS.Workbook();
+            
+            const ws1 = workbook.addWorksheet('Tráfego e Acompanhamento');
+            ws1.views = [{ showGridLines: true }];
+
+            const redFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'A52A2A' } };
+            const grayLightFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F2F2' } };
+            const fontTitle = { name: 'Calibri', size: 14, bold: true, color: { argb: '8B0000' } };
+            const fontHeader = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFF' } };
+            const fontSub = { name: 'Calibri', size: 10, bold: true };
+            const borderThin = {
+                top: { style: 'thin', color: { argb: 'BFBFBF' } },
+                left: { style: 'thin', color: { argb: 'BFBFBF' } },
+                bottom: { style: 'thin', color: { argb: 'BFBFBF' } },
+                right: { style: 'thin', color: { argb: 'BFBFBF' } }
+            };
+
+            ws1.mergeCells('A1:D1');
+            ws1.getCell('A1').value = "REGISTO DE TRÁFEGO, ACOMPANHAMENTO";
+            ws1.getCell('A1').font = fontTitle;
+
+            ws1.getCell('A2').value = "CDP:"; ws1.getCell('B2').value = document.getElementById('meta-cdp').value;
+            ws1.getCell('C2').value = "GIRO:"; ws1.getCell('D2').value = document.getElementById('meta-giro').value;
+            ws1.getCell('A3').value = "NOME CRT:"; ws1.getCell('B3').value = document.getElementById('meta-crt').value;
+            ws1.getCell('C3').value = "HORÁRIO:"; ws1.getCell('D3').value = document.getElementById('meta-horario').value;
+            ws1.getCell('A4').value = "DATA:"; ws1.getCell('B4').value = document.getElementById('meta-data').value;
+            ['A2','C2','A3','C3','A4'].forEach(cell => ws1.getCell(cell).font = fontSub);
+
+            ws1.mergeCells('A6:B6');
+            ws1.getCell('A6').value = "DADOS";
+            ws1.getCell('C6').value = "ESTUDO";
+            ws1.getCell('D6').value = "PROJEÇÃO REAL";
+
+            ['A6','B6','C6','D6'].forEach(cell => {
+                const c = ws1.getCell(cell);
+                c.fill = redFill; c.font = fontHeader; c.alignment = { horizontal: 'center', vertical: 'middle' }; c.border = borderThin;
+            });
+
+            const rowsData = [
+                ["ÁREA INFLUENCIA", "", document.getElementById('est-area').value, document.getElementById('proj-area').value],
+                ["TOTAL SEQUENCIADO", "", Number(document.getElementById('est-tot-seq').value) || 0, Number(document.getElementById('proj-tot-seq').value) || 0],
+                ["SEQUENCIAMENTO", "", document.getElementById('est-seq').value, document.getElementById('proj-seq').value],
+                ["SAÍDA HORA", "", document.getElementById('est-s-hora').value, document.getElementById('proj-s-hora').value],
+                ["REGRESSO HORA", "", document.getElementById('est-r-hora').value, document.getElementById('proj-r-hora').value],
+                ["SAÍDA KM", "", Number(document.getElementById('est-s-km').value) || 0, Number(document.getElementById('proj-s-km').value) || 0],
+                ["REGRESSO KM", "", Number(document.getElementById('est-r-km').value) || 0, Number(document.getElementById('proj-r-km').value) || 0],
+                ["ALMOÇO HORA INÍCIO", "", document.getElementById('est-alm-ini').value, document.getElementById('proj-alm-ini').value],
+                ["ALMOÇO HORA FIM", "", document.getElementById('est-alm-fim').value, document.getElementById('proj-alm-fim').value],
+                ["ALMOÇO KM INICIO", "", Number(document.getElementById('est-alm-kmi').value) || 0, Number(document.getElementById('proj-alm-kmi').value) || 0],
+                ["ALMOÇO KM FIM", "", Number(document.getElementById('est-alm-kmf').value) || 0, Number(document.getElementById('proj-alm-kmf').value) || 0],
+                ["VOLUMOSOS", "", Number(document.getElementById('est-volumosos').value) || 0, Number(document.getElementById('proj-volumosos').value) || 0],
+                ["TOTAL", "", Number(document.getElementById('est-total').value) || 0, Number(document.getElementById('proj-total').value) || 0],
+                ["CNE", "", Number(document.getElementById('est-cne').value) || 0, Number(document.getElementById('proj-cne').value) || 0],
+                ["CORREIO NORMAL FINOS", "", Number(document.getElementById('est-cn-finos').value) || 0, Number(document.getElementById('proj-cn-finos').value) || 0],
+                ["CORREIO NORMAL MÉDIOS", "", Number(document.getElementById('est-cn-medios').value) || 0, Number(document.getElementById('proj-cn-medios').value) || 0],
+                ["CORREIO AZUL FINOS", "", Number(document.getElementById('est-azul-finos').value) || 0, Number(document.getElementById('proj-azul-finos').value) || 0],
+                ["CORREIO AZUL MÉDIOS", "", Number(document.getElementById('est-azul-medios').value) || 0, Number(document.getElementById('proj-azul-medios').value) || 0],
+                ["CORREIO REGISTADO TOTAL", "", Number(document.getElementById('est-reg-tot').value) || 0, Number(document.getElementById('proj-reg-tot').value) || 0],
+                ["CORREIO REG SIMPLES", "", Number(document.getElementById('est-reg-simp').value) || 0, Number(document.getElementById('proj-reg-simp').value) || 0],
+                ["COBRANÇAS / EP", "", Number(document.getElementById('est-cobr').value) || 0, Number(document.getElementById('proj-cobr').value) || 0],
+                ["EMS", "", Number(document.getElementById('est-ems').value) || 0, Number(document.getElementById('proj-ems').value) || 0],
+                ["OCUPAÇÃO EM MINUTOS", "", Number(document.getElementById('est-ocup').value) || 0, Number(document.getElementById('proj-ocup').value) || 0],
+                ["KM", "", Number(document.getElementById('est-km').value) || 0, Number(document.getElementById('proj-km').value) || 0],
+                ["STOPS PD", "", Number(document.getElementById('est-stops-pd').value) || 0, Number(document.getElementById('proj-stops-pd').value) || 0],
+                ["STOPS PE", "", Number(document.getElementById('est-stops-pe').value) || 0, Number(document.getElementById('proj-stops-pe').value) || 0]
+            ];
+
+            rowsData.forEach((row, idx) => {
+                const r = ws1.getRow(7 + idx);
+                r.getCell(1).value = row[0]; r.getCell(2).fill = grayLightFill; r.getCell(3).value = row[2]; r.getCell(4).value = row[3];
+                for(let c=1; c<=4; c++) r.getCell(c).border = borderThin;
+            });
+
+            const ws2 = workbook.addWorksheet('Registo do Acompanhamento');
+            ws2.views = [{ showGridLines: true }];
+
+            ws2.getCell('A1').value = "REGISTO DO ACOMPANHAMENTO";
+            ws2.getCell('A1').font = fontTitle;
+
+            ws2.getCell('A3').value = "CDP:"; ws2.getCell('B3').value = document.getElementById('v-cdp').value;
+            ws2.getCell('A4').value = "ITINERÁRIO:"; ws2.getCell('B4').value = document.getElementById('v-itin').value;
+            ws2.getCell('A5').value = "NOME CRT:"; ws2.getCell('B5').value = document.getElementById('v-crt').value;
+            ws2.getCell('A6').value = "HORÁRIO:"; ws2.getCell('B6').value = document.getElementById('v-horario').value;
+            ['A3','A4','A5','A6'].forEach(c => ws2.getCell(c).font = fontSub);
+
+            ws2.mergeCells('D3:F3'); ws2.getCell('D3').value = "MARCA / MODELO"; ws2.getCell('D3').fill = redFill; ws2.getCell('D3').font = fontHeader; ws2.getCell('D3').alignment = { horizontal: 'center' };
+            ws2.mergeCells('D4:F4'); ws2.getCell('D4').value = document.getElementById('v-marca').value;
+            ws2.mergeCells('D5:F5'); ws2.getCell('D5').value = document.getElementById('v-numctt').value;
+            ws2.mergeCells('D6:F6'); ws2.getCell('D6').value = document.getElementById('v-matricula').value;
+
+            ws2.mergeCells('H3:N3'); ws2.getCell('H3').value = "SAÍDA / CHEGADA CDP"; ws2.getCell('H3').fill = redFill; ws2.getCell('H3').font = fontHeader; ws2.getCell('H3').alignment = { horizontal: 'center' };
+            ws2.getCell('H4').value = "Saída KM:"; 
+            ws2.getCell('I4').value = Number(document.getElementById('v-s-km').value) || 0;
+            ws2.getCell('J4').value = "Saída Hora:"; ws2.getCell('K4').value = document.getElementById('v-s-hora').value;
+            ws2.getCell('H5').value = "Cheg. KM:"; 
+            ws2.getCell('I5').value = Number(document.getElementById('v-c-km').value) || 0;
+            ws2.getCell('J5').value = "Cheg. Hora:"; ws2.getCell('K5').value = document.getElementById('v-c-hora').value;
+
+            const headers2 = ["CP4", "CP3", "ARRUAMENTO", "N.º PORTA", "ÁREA INFLUÊNCIA", "C NORMAL", "AZUL", "REGISTOS", "EMS", "RECOLHA", "Chegada KM", "Chegada HORA", "Partida HORA", "Desc. Min"];
+            const row8 = ws2.getRow(8);
+            headers2.forEach((h, idx) => {
+                const cell = row8.getCell(idx + 1);
+                cell.value = h; cell.fill = redFill; cell.font = fontHeader; cell.alignment = { horizontal: 'center', vertical: 'middle' }; cell.border = borderThin;
+            });
+
+            const rowsArrua = document.querySelectorAll('#tbody-arruamentos tr');
+            let rIdx = 0;
+            rowsArrua.forEach(tr => {
+                const inputs = tr.querySelectorAll('input');
+                const rowExcel = ws2.getRow(9 + rIdx);
+                
+                rowExcel.getCell(1).value = inputs[0].value;
+                rowExcel.getCell(2).value = inputs[1].value;
+                rowExcel.getCell(3).value = inputs[2].value;
+                rowExcel.getCell(4).value = inputs[3].value;
+                rowExcel.getCell(5).value = inputs[4].value;
+                rowExcel.getCell(6).value = Number(inputs[5].value) || 0;
+                rowExcel.getCell(7).value = Number(inputs[6].value) || 0;
+                rowExcel.getCell(8).value = Number(inputs[7].value) || 0;
+                rowExcel.getCell(9).value = Number(inputs[8].value) || 0;
+                rowExcel.getCell(10).value = Number(inputs[9].value) || 0;
+                rowExcel.getCell(11).value = Number(inputs[10].value) || 0;
+                rowExcel.getCell(12).value = inputs[11].value;
+                rowExcel.getCell(13).value = inputs[12].value;
+                rowExcel.getCell(14).value = Number(inputs[13].value) || 0;
+
+                for(let c=1; c<=14; c++) rowExcel.getCell(c).border = borderThin;
+                rIdx++;
+            });
+
+            const rowTot = ws2.getRow(9 + rIdx);
+            rowTot.getCell(5).value = "TOTAIS:"; rowTot.getCell(5).font = { bold: true };
+            rowTot.getCell(6).value = { formula: `SUM(F9:F${8+rIdx})` };
+            rowTot.getCell(7).value = { formula: `SUM(G9:G${8+rIdx})` };
+            rowTot.getCell(8).value = { formula: `SUM(L9:L${8+rIdx})` }; // Ajuste de soma se necessário
+            // ... (restantes fórmulas)
+            
+            const buffer = await workbook.xlsx.writeBuffer();
+            saveAs(new Blob([buffer]), "Gestao_Giro_CTT_Completo.xlsx");
+        }
+    </script>
+</body>
+</html>
